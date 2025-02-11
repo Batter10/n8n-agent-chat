@@ -1,0 +1,22 @@
+{
+  "agents": [
+    {
+      "id": "hr-qa",
+      "name": "HR QA Bot",
+      "description": "Beantwoordt vragen over personeelszaken",
+      "webhookUrl": "https://n8n.jouwdomein.nl/webhook/hr-qa",
+      "workflowId": "hyNelSzWkmWzDQFR",
+      "icon": "message-square",
+      "category": "HR"
+    },
+    {
+      "id": "sales-qa",
+      "name": "Sales Assistant",
+      "description": "Helpt met verkoop gerelateerde vragen",
+      "webhookUrl": "https://n8n.jouwdomein.nl/webhook/sales-qa",
+      "workflowId": "sales123",
+      "icon": "shopping-cart",
+      "category": "Sales"
+    }
+  ]
+}
