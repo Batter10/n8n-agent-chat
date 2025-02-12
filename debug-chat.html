@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>N8N Chat Debug</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen">
+    <div class="max-w-4xl mx-auto p-4">
+        <div class="bg-white rounded-lg shadow-lg mb-4">
+            <!-- Debug Info -->
+            <div class="p-4 bg-gray-100 border-b">
+                <h2 class="font-bold text-lg mb-2">Debug Info</h2>
+                <div id="debugInfo" class="font-mono text-sm"></div>
+            </div>
+
+            <!-- Chat Interface -->
+            <div class="p-4 border-b">
+                <h1 class="text-xl font-bold">HR QA Bot</h1>
+                <div class="mt-2 space-y-2">
+                    <div>
+                        <label class="block text-sm font-medium">Webhook URL:</label>
+                        <input 
+                            type="text" 
+                            id="webhookUrl" 
+                            value="https://batterassist.app.n8n.cloud/webhook-test/39ea28d3-94a8-4a55-9b20-cee6f40cc0de"
+                            class="w-full p-2 border rounded mt-1"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">Message:</label>
+                        <input 
+                            type="text" 
+                            id="messageInput"
+                            class="w-full p-2 border rounded mt-1" 
+                            placeholder="Type je vraag..."
+                            value="Hoeveel vakantiedagen heb ik?"
+                        >
+                    </div>
+                    <button 
+                        onclick="sendMessage()"
+                        class="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                        Test Webhook
+                    </button>
+                </div>
+            </div>
+
+            <!-- Response Area -->
+            <div class="p-4">
+                <h2 class="font-bold mb-2">Response:</h2>
+                <pre id="response" class="bg-gray-100 p-4 rounded overflow-auto max-h-60"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const debugInfo = document.getElementById('debugInfo');
+        const responseArea = document.getElementById('response');
+
+        function log(message) {
+            const time = new Date().toISOString().split('T')[1];
+            debugInfo.innerHTML += `<div>[${time}] ${message}</div>`;
+        }
+
+        async function sendMessage() {
+            const webhook = document.getElementById('webhookUrl').value;
+            const message = document.getElementById('messageInput').value;
+
+            if (!message) {
+                log('Error: No message provided');
+                return;
+            }
+
+            log(`Sending request to: ${webhook}`);
+            log(`Message: ${message}`);
+
+            try {
+                const payload = {
+                    chatInput: message
+                };
+
+                log(`Payload: ${JSON.stringify(payload)}`);
+
+                const response = await fetch(webhook, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                log(`Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log('Response received');
+                responseArea.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                log(`Error: ${error.message}`);
+                responseArea.textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
