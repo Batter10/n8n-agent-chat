@@ -1,47 +1,55 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = (username, password) => {
-    // In een echte applicatie zou je hier een API call maken
-    // Voor nu simuleren we verschillende gebruikersrollen
-    if (username === 'hr_admin') {
-      setUser({
-        username,
-        role: 'admin',
-        permissions: ['manage_documents', 'manage_agents', 'use_chat']
-      });
-    } else {
-      setUser({
-        username,
-        role: 'user',
-        permissions: ['use_chat']
-      });
-    }
+  useEffect(() => {
+    // Check if user is logged in on mount
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await fetch('/api/verify-token', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+          } else {
+            localStorage.removeItem('token');
+          }
+        } catch (error) {
+          console.error('Auth check failed:', error);
+          localStorage.removeItem('token');
+        }
+      }
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, []);
+
+  const login = async (userData) => {
+    setUser(userData);
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
     setUser(null);
   };
 
-  const hasPermission = (permission) => {
-    return user?.permissions?.includes(permission) || false;
-  };
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, hasPermission }}>
+    <AuthContext.Provider value={{ user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };
