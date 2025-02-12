@@ -131,16 +131,62 @@
                 const data = await response.json();
                 log(`Received: ${JSON.stringify(data)}`);
 
-                // Add AI response
-                if (data && data.response && data.response.message) {
-                    addMessage(data.response.message);
+                // Extract message from response
+                let aiMessage = '';
+                if (typeof data === 'string') {
+                    // Als het een directe string is
+                    aiMessage = data;
+                } else if (data && data.message) {
+                    // Als het in message zit
+                    aiMessage = data.message;
+                } else if (data && data.response && data.response.message) {
+                    // Als het in response.message zit
+                    aiMessage = data.response.message;
+                } else if (data && data.agentOutput) {
+                    // Als het in agentOutput zit
+                    aiMessage = data.agentOutput;
                 } else {
-                    addMessage('Er is iets misgegaan bij het verwerken van het antwoord.');
+                    // Poging om het te vinden in het object
+                    const possibleMessage = findMessageInObject(data);
+                    if (possibleMessage) {
+                        aiMessage = possibleMessage;
+                    } else {
+                        throw new Error('Geen leesbaar antwoord gevonden');
+                    }
                 }
+
+                addMessage(aiMessage);
             } catch (error) {
                 log(`Error: ${error.message}`);
                 addMessage('Er is een fout opgetreden bij het versturen van je bericht.');
             }
+        }
+
+        function findMessageInObject(obj) {
+            // Zoek recursief door het object naar een mogelijke message
+            if (!obj) return null;
+            
+            // Check bekende properties
+            const possibleKeys = ['message', 'agentOutput', 'response', 'text', 'content', 'answer'];
+            
+            for (const key of possibleKeys) {
+                if (obj[key] && typeof obj[key] === 'string') {
+                    return obj[key];
+                }
+            }
+            
+            // Zoek door alle properties
+            for (const key in obj) {
+                if (typeof obj[key] === 'object') {
+                    const found = findMessageInObject(obj[key]);
+                    if (found) return found;
+                } else if (typeof obj[key] === 'string' && obj[key].length > 20) {
+                    // Als we een lange string vinden, is het mogelijk de message
+                    return obj[key];
+                }
+            }
+            
+            return null;
         }
 
         // Initialize
