@@ -18,6 +18,22 @@
                 <h1 class="text-xl font-bold">HR QA Bot</h1>
                 <div class="mt-2 space-y-2">
                     <div>
+                        <label class="block text-sm font-medium">Session ID:</label>
+                        <input 
+                            type="text" 
+                            id="sessionId" 
+                            value="session_1"
+                            class="w-full p-2 border rounded mt-1"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">User Type:</label>
+                        <select id="userType" class="w-full p-2 border rounded mt-1">
+                            <option value="user">Regular User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium">Webhook URL:</label>
                         <input 
                             type="text" 
@@ -65,6 +81,8 @@
         async function sendMessage() {
             const webhook = document.getElementById('webhookUrl').value;
             const message = document.getElementById('messageInput').value;
+            const sessionId = document.getElementById('sessionId').value;
+            const userType = document.getElementById('userType').value;
 
             if (!message) {
                 log('Error: No message provided');
@@ -72,14 +90,22 @@
             }
 
             log(`Sending request to: ${webhook}`);
+            log(`Session ID: ${sessionId}`);
+            log(`User Type: ${userType}`);
             log(`Message: ${message}`);
 
             try {
                 const payload = {
-                    chatInput: message
+                    chatInput: message,
+                    sessionId: sessionId,
+                    userType: userType,
+                    metadata: {
+                        timestamp: new Date().toISOString(),
+                        source: 'web-chat'
+                    }
                 };
 
-                log(`Payload: ${JSON.stringify(payload)}`);
+                log(`Payload: ${JSON.stringify(payload, null, 2)}`);
 
                 const response = await fetch(webhook, {
                     method: 'POST',
@@ -99,6 +125,9 @@
                 responseArea.textContent = `Error: ${error.message}`;
             }
         }
+
+        // Generate a unique session ID on load
+        document.getElementById('sessionId').value = 'session_' + Date.now();
     </script>
 </body>
 </html>
