@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>N8N Chat Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen">
+    <div class="max-w-4xl mx-auto p-4">
+        <div class="bg-white rounded-lg shadow-lg">
+            <!-- Header -->
+            <div class="p-4 border-b">
+                <h1 class="text-xl font-bold">HR QA Bot</h1>
+                <select id="userType" class="mt-2 p-2 border rounded">
+                    <option value="admin">Admin (testbeh123@gmail.com)</option>
+                    <option value="user">User (testalg123@gmail.com)</option>
+                </select>
+            </div>
+
+            <!-- Chat Messages -->
+            <div id="messages" class="h-96 overflow-y-auto p-4 space-y-4">
+                <!-- Messages will appear here -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 border-t">
+                <div class="flex space-x-4">
+                    <input 
+                        type="text" 
+                        id="messageInput"
+                        class="flex-1 p-2 border rounded" 
+                        placeholder="Type je vraag..."
+                    >
+                    <button 
+                        onclick="sendMessage()"
+                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                        Verstuur
+                    </button>
+                </div>
+
+                <!-- File Upload (only for admin) -->
+                <div id="adminControls" class="mt-4">
+                    <input 
+                        type="file" 
+                        id="fileInput"
+                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    >
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Vervang deze URLs met je eigen n8n webhook URLs
+        const N8N_WEBHOOKS = {
+            qa: 'https://n8n.your-domain.com/webhook/hyNelSzWkmWzDQFR',
+            rag: 'https://n8n.your-domain.com/webhook/D7p5TNUzR4ETJWV5'
+        };
+
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const userTypeSelect = document.getElementById('userType');
+        const adminControls = document.getElementById('adminControls');
+
+        // Toon/verberg admin controls
+        userTypeSelect.addEventListener('change', () => {
+            adminControls.style.display = 
+                userTypeSelect.value === 'admin' ? 'block' : 'none';
+        });
+
+        function addMessage(content, isUser = false) {
+            const div = document.createElement('div');
+            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+            div.innerHTML = `
+                <div class="max-w-[70%] p-3 rounded-lg ${
+                    isUser ? 'bg-blue-500 text-white' : 'bg-gray-100'
+                }">
+                    ${content}
+                </div>
+            `;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value;
+            if (!message) return;
+
+            addMessage(message, true);
+            messageInput.value = '';
+
+            try {
+                const response = await fetch(N8N_WEBHOOKS.qa, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message,
+                        userType: userTypeSelect.value
+                    })
+                });
+
+                const data = await response.json();
+                addMessage(data.message || 'Er is een fout opgetreden');
+            } catch (error) {
+                addMessage('Er is een fout opgetreden bij het versturen van je bericht');
+            }
+        }
+
+        // Start with admin controls visible/hidden based on initial selection
+        adminControls.style.display = 
+            userTypeSelect.value === 'admin' ? 'block' : 'none';
+
+        // Handle enter key in input
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // File upload handler
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(N8N_WEBHOOKS.rag, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                addMessage(`Document "${file.name}" is succesvol geüpload.`);
+            } catch (error) {
+                addMessage('Er is een fout opgetreden bij het uploaden van het document.');
+            }
+        });
+    </script>
+</body>
+</html>
