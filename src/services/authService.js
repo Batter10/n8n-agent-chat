@@ -1,72 +1,75 @@
-import { getUserByEmail, isOwnerEmail } from '../config/users';
-import { ROLES, hasPermission } from '../config/roles';
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT,
+});
 
 class AuthService {
-  constructor() {
-    this.currentUser = null;
-    // In een echte applicatie zou je hier een JWT token of andere sessie mechanisme gebruiken
+  async registerUser(email, password, role, companyId) {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const result = await pool.query(
+      'INSERT INTO users (email, password_hash, role, company_id) VALUES ($1, $2, $3, $4) RETURNING id, email, role',
+      [email, hashedPassword, role, companyId]
+    );
+    
+    return result.rows[0];
   }
 
-  async login(email, password) {
-    // In productie zou je hier echte wachtwoord verificatie gebruiken
-    if (password !== 'test123') {
-      throw new Error('Invalid credentials');
-    }
-
-    const user = getUserByEmail(email);
+  async loginUser(email, password) {
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+    
+    const user = result.rows[0];
+    
     if (!user) {
       throw new Error('User not found');
     }
-
-    if (user.status !== 'active') {
-      throw new Error('Account is not active');
+    
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    
+    if (!validPassword) {
+      throw new Error('Invalid password');
     }
-
-    this.currentUser = user;
-    return user;
+    
+    const token = jwt.sign(
+      { 
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        companyId: user.company_id 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    return {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        companyId: user.company_id
+      }
+    };
   }
 
-  async logout() {
-    this.currentUser = null;
-  }
-
-  isAuthenticated() {
-    return !!this.currentUser;
-  }
-
-  getCurrentUser() {
-    return this.currentUser;
-  }
-
-  isPlatformOwner() {
-    return this.currentUser && isOwnerEmail(this.currentUser.email);
-  }
-
-  isCompanyAdmin() {
-    return this.currentUser && this.currentUser.role === ROLES.COMPANY_ADMIN;
-  }
-
-  canManageCompany(companyId) {
-    if (!this.currentUser) return false;
-    if (this.isPlatformOwner()) return true;
-    return this.isCompanyAdmin() && this.currentUser.companyId === companyId;
-  }
-
-  canUseAgent(agentId, companyId) {
-    if (!this.currentUser) return false;
-    if (this.isPlatformOwner()) return true;
-    return this.currentUser.companyId === companyId && 
-           hasPermission(this.currentUser.role, 'use_agents');
-  }
-
-  // Extra veiligheid voor platform owner acties
-  async verifyOwnerPassword(password) {
-    if (!this.isPlatformOwner()) {
-      throw new Error('Unauthorized');
+  async verifyToken(token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      return decoded;
+    } catch (error) {
+      throw new Error('Invalid token');
     }
-    // In productie zou je hier extra wachtwoord verificatie doen
-    return password === 'test123';
   }
 }
 
-export const authService = new AuthService();
+module.exports = new AuthService();
