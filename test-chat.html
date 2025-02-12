@@ -51,10 +51,10 @@
     </div>
 
     <script>
-        // Vervang deze URLs met je eigen n8n webhook URLs
+        // Je eigen n8n webhook URLs
         const N8N_WEBHOOKS = {
-            qa: 'https://n8n.your-domain.com/webhook/hyNelSzWkmWzDQFR',
-            rag: 'https://n8n.your-domain.com/webhook/D7p5TNUzR4ETJWV5'
+            qa: 'https://batterassist.app.n8n.cloud/webhook-test/39ea28d3-94a8-4a55-9b20-cee6f40cc0de',
+            rag: 'https://batterassist.app.n8n.cloud/webhook-test/af385643-155b-4b3c-a943-25e3e658fa00'
         };
 
         const messagesDiv = document.getElementById('messages');
@@ -94,14 +94,20 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        message,
+                        chatInput: message,
                         userType: userTypeSelect.value
                     })
                 });
 
                 const data = await response.json();
-                addMessage(data.message || 'Er is een fout opgetreden');
+                // Laat het AI agent antwoord zien
+                if (data.result && data.result.length > 0 && data.result[0].agentOutput) {
+                    addMessage(data.result[0].agentOutput);
+                } else {
+                    addMessage('Geen antwoord ontvangen van de agent.');
+                }
             } catch (error) {
+                console.error('Error:', error);
                 addMessage('Er is een fout opgetreden bij het versturen van je bericht');
             }
         }
@@ -124,14 +130,17 @@
             formData.append('file', file);
 
             try {
+                addMessage(`Bezig met uploaden van "${file.name}"...`);
+                
                 const response = await fetch(N8N_WEBHOOKS.rag, {
                     method: 'POST',
                     body: formData
                 });
 
                 const data = await response.json();
-                addMessage(`Document "${file.name}" is succesvol geüpload.`);
+                addMessage(`Document "${file.name}" is succesvol geüpload en verwerkt.`);
             } catch (error) {
+                console.error('Error:', error);
                 addMessage('Er is een fout opgetreden bij het uploaden van het document.');
             }
         });
